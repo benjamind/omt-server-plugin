@@ -34,7 +34,7 @@ function omtPlugin(config: OMTConfig): Plugin {
       if (isChromiumBased(context.request.headers["user-agent"])) {
         return; // do nothing on chromium based browsers
       }
-      const requestedUrl = context.originalUrl;
+      const requestedUrl = context.path;
 
       // serve sourcemaps from memory
       if (requestedUrl.endsWith(".map")) {
@@ -123,9 +123,7 @@ function omtPlugin(config: OMTConfig): Plugin {
           }
 
           const workerURL = match[2];
-          const workerRootDir = path
-            .dirname(context.request.originalUrl)
-            .slice(1);
+          const workerRootDir = path.dirname(context.path).slice(1);
 
           const resolvedWorkerPath = `/${path.normalize(
             path.join(workerRootDir, workerURL)
@@ -181,7 +179,7 @@ function omtPlugin(config: OMTConfig): Plugin {
           const sourcemap = ms.generateMap({
             hires: true,
           });
-          virtualFiles.set(`${context.request.originalUrl}.map`, sourcemap);
+          virtualFiles.set(`${context.path}.map`, sourcemap);
 
           return { body: ms.toString() };
         }

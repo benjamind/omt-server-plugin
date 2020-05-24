@@ -25,7 +25,7 @@ function omtPlugin(config) {
             if (isChromiumBased(context.request.headers["user-agent"])) {
                 return; // do nothing on chromium based browsers
             }
-            const requestedUrl = context.originalUrl;
+            const requestedUrl = context.path;
             // serve sourcemaps from memory
             if (requestedUrl.endsWith(".map")) {
                 // if requested map is in the virtual files map just return it
@@ -97,9 +97,7 @@ function omtPlugin(config) {
                         break;
                     }
                     const workerURL = match[2];
-                    const workerRootDir = path_1.default
-                        .dirname(context.request.originalUrl)
-                        .slice(1);
+                    const workerRootDir = path_1.default.dirname(context.path).slice(1);
                     const resolvedWorkerPath = `/${path_1.default.normalize(path_1.default.join(workerRootDir, workerURL))}`;
                     let optionsObject = {};
                     // Parse the optional options object
@@ -134,7 +132,7 @@ function omtPlugin(config) {
                     const sourcemap = ms.generateMap({
                         hires: true,
                     });
-                    virtualFiles.set(`${context.request.originalUrl}.map`, sourcemap);
+                    virtualFiles.set(`${context.path}.map`, sourcemap);
                     return { body: ms.toString() };
                 }
             }
