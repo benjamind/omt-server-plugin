@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
+  "repository": "https://github.com/benjamind/omt-server-plugin",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",
@@ -22,6 +23,6 @@
     "es-dev-server": "^1.50.8",
     "typescript": "^3.9.3"
   },
-  "author": "",
+  "author": "Ben Delarre",
   "license": "ISC"
 }
