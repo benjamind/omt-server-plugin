@@ -1,12 +1,14 @@
 {
   "name": "omt-server-plugin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
   "main": "dist/index.js",
   "repository": "https://github.com/benjamind/omt-server-plugin",
+  "files": ["dist", "src"],
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",
+    "prepublish": "npx build",
     "test": "cd test && es-dev-server --config es-dev-server.js"
   },
   "dependencies": {
