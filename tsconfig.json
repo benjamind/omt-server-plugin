@@ -1,0 +1,17 @@
+{
+  "include": ["src/**/*"],
+  "compilerOptions": {
+    "strict": true,
+    "target": "es2018",
+    "module": "CommonJS",
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "outDir": "dist",
+    "lib": ["es2018"],
+    "checkJs": false,
+    "declaration": true,
+    "types": ["node"],
+    "esModuleInterop": true
+  }
+}
