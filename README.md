@@ -11,7 +11,7 @@ This plugin uses [rollup](https://rollupjs.org/) and Surmas [rollup-plugin-off-m
 Add the plugin to your `es-dev-server.js` config file or at the commandline:
 
 ```js
-const omtPlugin = require("../dist/index.js");
+const omtPlugin = require("omt-server-plugin");
 
 module.exports = {
   nodeResolve: {
