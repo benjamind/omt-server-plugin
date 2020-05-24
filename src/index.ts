@@ -101,7 +101,9 @@ function omtPlugin(config: OMTConfig): Plugin {
 
       worker.code = output[0].code;
       // you have to append your own sourcemapping comment when using generate
-      worker.code += `//# sourceMappingURL=${path.basename(requestedUrl)}.map`;
+      worker.code += `//# sourceMappingURL=${path.posix.basename(
+        requestedUrl
+      )}.map`;
 
       // add the sourcemap to virtual files list to be served directly later
       virtualFiles.set(`${requestedUrl}.map`, output[0].map);
@@ -113,7 +115,7 @@ function omtPlugin(config: OMTConfig): Plugin {
     transform(context) {
       if (context.response.is("js")) {
         const code = context.body;
-        const ms = new MagicString(code);
+        let ms: MagicString | undefined;
 
         let hasWorker = false;
         while (true) {
@@ -123,10 +125,10 @@ function omtPlugin(config: OMTConfig): Plugin {
           }
 
           const workerURL = match[2];
-          const workerRootDir = path.dirname(context.path).slice(1);
+          const workerRootDir = path.posix.dirname(context.path).slice(1);
 
-          const resolvedWorkerPath = `/${path.normalize(
-            path.join(workerRootDir, workerURL)
+          const resolvedWorkerPath = `/${path.posix.normalize(
+            path.posix.join(workerRootDir, workerURL)
           )}`;
 
           let optionsObject: {
@@ -165,7 +167,7 @@ function omtPlugin(config: OMTConfig): Plugin {
           const workerParametersStartIndex = match.index + "new Worker(".length;
           const workerParametersEndIndex =
             match.index + match[0].length - ")".length;
-
+          ms = new MagicString(code);
           ms.overwrite(
             workerParametersStartIndex,
             workerParametersEndIndex,
@@ -175,7 +177,7 @@ function omtPlugin(config: OMTConfig): Plugin {
 
         // if the file has worker references, we've modified it
         // so we should generate a new sourcemap and add it to the virtuals list
-        if (hasWorker) {
+        if (hasWorker && ms) {
           const sourcemap = ms.generateMap({
             hires: true,
           });

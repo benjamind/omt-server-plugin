@@ -80,7 +80,7 @@ function omtPlugin(config) {
             });
             worker.code = output[0].code;
             // you have to append your own sourcemapping comment when using generate
-            worker.code += `//# sourceMappingURL=${path_1.default.basename(requestedUrl)}.map`;
+            worker.code += `//# sourceMappingURL=${path_1.default.posix.basename(requestedUrl)}.map`;
             // add the sourcemap to virtual files list to be served directly later
             virtualFiles.set(`${requestedUrl}.map`, output[0].map);
             // return the worker code
@@ -89,7 +89,7 @@ function omtPlugin(config) {
         transform(context) {
             if (context.response.is("js")) {
                 const code = context.body;
-                const ms = new magic_string_1.default(code);
+                let ms;
                 let hasWorker = false;
                 while (true) {
                     const match = workerRegexp.exec(code);
@@ -97,8 +97,8 @@ function omtPlugin(config) {
                         break;
                     }
                     const workerURL = match[2];
-                    const workerRootDir = path_1.default.dirname(context.path).slice(1);
-                    const resolvedWorkerPath = `/${path_1.default.normalize(path_1.default.join(workerRootDir, workerURL))}`;
+                    const workerRootDir = path_1.default.posix.dirname(context.path).slice(1);
+                    const resolvedWorkerPath = `/${path_1.default.posix.normalize(path_1.default.posix.join(workerRootDir, workerURL))}`;
                     let optionsObject = {};
                     // Parse the optional options object
                     if (match[3] && match[3].length > 0) {
@@ -124,11 +124,12 @@ function omtPlugin(config) {
                     // also borrowed from OMT plugin, have to rewrite the worker string to the new path
                     const workerParametersStartIndex = match.index + "new Worker(".length;
                     const workerParametersEndIndex = match.index + match[0].length - ")".length;
+                    ms = new magic_string_1.default(code);
                     ms.overwrite(workerParametersStartIndex, workerParametersEndIndex, `'${resolvedWorkerPath}', ${JSON.stringify(optionsObject)}`);
                 }
                 // if the file has worker references, we've modified it
                 // so we should generate a new sourcemap and add it to the virtuals list
-                if (hasWorker) {
+                if (hasWorker && ms) {
                     const sourcemap = ms.generateMap({
                         hires: true,
                     });
