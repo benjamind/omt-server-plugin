@@ -4,11 +4,14 @@
   "description": "",
   "main": "dist/index.js",
   "repository": "https://github.com/benjamind/omt-server-plugin",
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",
-    "prepublish": "npx build",
+    "prepublish": "npm run build",
     "test": "cd test && es-dev-server --config es-dev-server.js"
   },
   "dependencies": {
