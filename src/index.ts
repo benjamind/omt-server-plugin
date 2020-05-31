@@ -6,9 +6,10 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import OMT from "@surma/rollup-plugin-off-main-thread";
 import path from "path";
 import MagicString from "magic-string";
-import { watch } from "fs";
+import { SourceMapConsumer, SourceMapGenerator } from "source-map";
+import { readFileSync, existsSync } from "fs";
 
-interface OMTConfig {}
+interface OMTConfig { }
 
 function isChromiumBased(userAgent: string): boolean {
   const agent = userAgent.toLowerCase();
@@ -24,10 +25,12 @@ function omtPlugin(config: OMTConfig): Plugin {
   const workerEntrypoints = new Map();
   const virtualFiles = new Map();
   let watcher: FSWatcher;
+  let rootDir: string;
 
   return {
-    serverStart({ fileWatcher }) {
+    serverStart({ config, fileWatcher }) {
       watcher = fileWatcher;
+      rootDir = config.rootDir;
     },
 
     async serve(context) {
@@ -57,14 +60,14 @@ function omtPlugin(config: OMTConfig): Plugin {
       }
 
       // process the worker file
-      console.log(`omt-worker-plugin: bundling worker from '${worker.url}'`);
+      console.log(`omt-worker-plugin: bundling worker from '${worker.url}': ${rootDir} ${worker.rootDir}`);
       const legacyBundle = await rollup({
         input: worker.url,
         plugins: [
           sourcemaps(),
           nodeResolve({
             browser: true,
-            rootDir: worker.rootDir,
+            rootDir: path.resolve(rootDir, worker.rootDir),
           }),
           OMT(),
         ],
@@ -112,8 +115,8 @@ function omtPlugin(config: OMTConfig): Plugin {
       return { body: worker.code };
     },
 
-    transform(context) {
-      if (context.response.is("js")) {
+    async transform(context) {
+      if (context.path.endsWith(".js")) {
         const code = context.body;
         let ms: MagicString | undefined;
 
@@ -178,12 +181,45 @@ function omtPlugin(config: OMTConfig): Plugin {
         // if the file has worker references, we've modified it
         // so we should generate a new sourcemap and add it to the virtuals list
         if (hasWorker && ms) {
-          const sourcemap = ms.generateMap({
-            hires: true,
-          });
-          virtualFiles.set(`${context.path}.map`, sourcemap);
-
-          return { body: ms.toString() };
+          const convertedBody = ms.toString();
+          // parse the content for the sourcemap comment
+          const sourceMapCommentRegexp = /\/\/# sourceMappingURL=(\S*)/g;
+          const matches = code.match(sourceMapCommentRegexp);
+          const baseDir = path.posix.join(rootDir, path.posix.dirname(context.path));
+          if (matches && matches.length > 0) {
+            // if we have a sourcemap comment and it actually exists
+            const lastComment = matches[matches?.length - 1];
+            const ogSourcemapPath = lastComment.split('=')[1];
+            const ogSourcemapPathResolved = path.posix.resolve(baseDir, ogSourcemapPath);
+            if (existsSync(ogSourcemapPathResolved)) {
+              // render our sourcemap using magic-string
+              // this maps from the transformed file to the requested file
+              const sourcemap = ms.generateMap({
+                hires: true,
+                file: `${context.path}.map`,
+                source: context.path,
+              });
+              // now load the original sourcemap, this maps from the requested file to the original source
+              const ogSourcemapContent = readFileSync(ogSourcemapPathResolved, { encoding: 'utf8' });
+              const parsedSourcemap = JSON.parse(ogSourcemapContent);
+              const generatedSourcemap = await SourceMapConsumer.with(
+                parsedSourcemap,
+                null,
+                async function (consumer) {
+                  const generator = SourceMapGenerator.fromSourceMap(consumer);
+                  return await SourceMapConsumer.with(sourcemap, null, (consumer2) => {
+                    // apply the transformed sourcemap to the original sourcemap
+                    // the resultant generated sourcemap should in theory map us from the transformed file
+                    // all the way back to the original source file.
+                    generator.applySourceMap(consumer2, `${context.path}`, `${context.path}.map`);
+                    return generator.toString();
+                  });
+                }
+              );
+              virtualFiles.set(`${ogSourcemapPath}`, generatedSourcemap);
+            }
+          }
+          return { body: convertedBody };
         }
       }
     },

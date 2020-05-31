@@ -1,0 +1,18 @@
+{
+  "include": [
+    "./*.ts"
+  ],
+  "extends": "../tsconfig.common.json",
+  "compilerOptions": {
+    "outDir": "../js/main",
+    "lib": [
+      "es2018",
+      "dom"
+    ],
+  },
+  "references": [
+    {
+      "path": "../worker/tsconfig.json"
+    }
+  ]
+}

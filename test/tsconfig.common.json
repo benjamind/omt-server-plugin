@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "es2018",
+    "module": "es2020",
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "outDir": "js",
+    "lib": [
+      "es2018",
+      "DOM"
+    ],
+    "checkJs": false,
+    "declaration": true,
+    "types": [
+      "node"
+    ],
+    "esModuleInterop": true
+  }
+}
