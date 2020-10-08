@@ -2,20 +2,15 @@
   "compilerOptions": {
     "strict": true,
     "target": "es2018",
-    "module": "es2020",
+    "module": "esnext",
     "sourceMap": true,
     "moduleResolution": "node",
     "importHelpers": true,
     "outDir": "js",
-    "lib": [
-      "es2018",
-      "DOM"
-    ],
+    "lib": ["es2018", "DOM"],
     "checkJs": false,
     "declaration": true,
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "esModuleInterop": true
   }
 }
