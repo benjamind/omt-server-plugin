@@ -1,6 +1,6 @@
 {
   "name": "omt-server-plugin",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "",
   "main": "dist/index.js",
   "repository": "https://github.com/benjamind/omt-server-plugin",

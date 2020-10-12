@@ -130,7 +130,7 @@ function omtPlugin(config: OMTConfig): Plugin {
     },
 
     async transform(context) {
-      if (context.path.endsWith(".js")) {
+      if (context.path && context.path.endsWith(".js")) {
         const code = context.body;
         let ms: MagicString | undefined;
 
