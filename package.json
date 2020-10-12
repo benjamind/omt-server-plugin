@@ -1,13 +1,17 @@
 {
   "name": "omt-server-plugin",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "",
-  "main": "dist/index.js",
   "repository": "https://github.com/benjamind/omt-server-plugin",
   "files": [
     "dist",
-    "src"
+    "src",
+    "esm"
   ],
+  "exports": {
+    "require": "./dist/index.js",
+    "import": "./esm/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",

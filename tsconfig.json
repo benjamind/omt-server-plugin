@@ -3,7 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "target": "es2018",
-    "module": "CommonJS",
+    "module": "commonjs",
     "sourceMap": true,
     "moduleResolution": "node",
     "importHelpers": true,

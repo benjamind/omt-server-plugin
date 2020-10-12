@@ -256,4 +256,4 @@ function omtPlugin(config: OMTConfig): Plugin {
   };
 }
 
-export = omtPlugin;
+export default omtPlugin;
