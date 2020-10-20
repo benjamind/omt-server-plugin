@@ -1,4 +1,4 @@
-import { Plugin } from "es-dev-server";
+import { Plugin } from "@web/dev-server-core";
 import { rollup } from "rollup";
 import { FSWatcher } from "chokidar";
 import sourcemaps from "rollup-plugin-sourcemaps";
@@ -28,6 +28,8 @@ function omtPlugin(config: OMTConfig): Plugin {
   let rootDir: string;
 
   return {
+    name: "omt-server-plugin",
+
     serverStart({ config, fileWatcher }) {
       watcher = fileWatcher;
       rootDir = config.rootDir;
@@ -127,6 +129,18 @@ function omtPlugin(config: OMTConfig): Plugin {
 
       // return the worker code
       return { body: worker.code };
+    },
+
+    transformCacheKey(context) {
+      if (isChromiumBased(context.request.headers["user-agent"])) {
+        return undefined; // do nothing on chromium based browsers
+      }
+      // do nothing if its not a worker entrypoint
+      if (!workerEntrypoints.has(context.path)) {
+        return undefined;
+      }
+      // otherwise add legacy as the cache key to avoid caching issues
+      return "legacy";
     },
 
     async transform(context) {

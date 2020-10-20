@@ -1,6 +1,6 @@
-const omtPlugin = require("../dist/index.js");
+import omtPlugin from "../esm/index.js";
 
-module.exports = {
+export default {
   port: 8080,
   watch: true,
   nodeResolve: {
