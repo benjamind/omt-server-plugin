@@ -1,6 +1,6 @@
 {
   "name": "omt-server-plugin",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "",
   "main": "./dist/index.js",
   "module": "./esm/index.js",
@@ -21,22 +21,21 @@
     "test": "tsc --build test/main -w & web-dev-server --root-dir test --config test/web-dev-server.config.mjs && kill $!"
   },
   "dependencies": {
-    "@rollup/plugin-node-resolve": "^8.0.0",
-    "@surma/rollup-plugin-off-main-thread": "^1.4.1",
+    "@rollup/plugin-node-resolve": "^11.2.0",
+    "@surma/rollup-plugin-off-main-thread": "^2.1.0",
+    "json5": "^2.2.0",
     "magic-string": "^0.25.7",
-    "rollup": "^2.32.0",
-    "rollup-plugin-sourcemaps": "^0.6.2",
-    "source-map": "^0.7.3"
+    "rollup": "^2.42.3",
+    "rollup-plugin-sourcemaps": "^0.6.3",
+    "source-map": "^0.7.3",
+    "tippex": "^3.0.0"
   },
   "devDependencies": {
-    "@types/koa": "^2.11.6",
-    "@types/node": "^14.14.0",
-    "@types/parse5": "^5.0.3",
-    "@web/dev-server": "0.0.15",
-    "@web/dev-server-core": "^0.2.13",
-    "chokidar": "^3.4.3",
-    "tslib": "^2.0.3",
-    "typescript": "^3.9.3"
+    "@web/dev-server": "0.1.10",
+    "@web/dev-server-core": "^0.3.8",
+    "chokidar": "^3.5.1",
+    "tslib": "^2.1.0",
+    "typescript": "^4.2.3"
   },
   "author": "Ben Delarre",
   "license": "ISC"

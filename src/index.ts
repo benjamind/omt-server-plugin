@@ -6,12 +6,17 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import OMT from "@surma/rollup-plugin-off-main-thread";
 import path from "path";
 import MagicString from "magic-string";
+import { match, MatchArgs } from "tippex";
+import json5 from "json5";
 import { SourceMapConsumer, SourceMapGenerator } from "source-map";
 import { readFileSync, existsSync } from "fs";
 
 interface OMTConfig {}
 
-function isChromiumBased(userAgent: string): boolean {
+function isChromiumBased(userAgent: string | undefined): boolean {
+  if (!userAgent) {
+    throw new Error("Undefined user agent!");
+  }
   const agent = userAgent.toLowerCase();
   return (
     agent.indexOf("edg/") > -1 ||
@@ -21,7 +26,16 @@ function isChromiumBased(userAgent: string): boolean {
 }
 
 function omtPlugin(config: OMTConfig): Plugin {
-  const workerRegexp = /new Worker\((["'])(.+?)\1(,[^)]+)?\)/g;
+  // Borrowed from OMT plugin
+  // A regexp to find static `new Worker` invocations.
+  // File part matches one of:
+  // - '...'
+  // - "..."
+  // - `import.meta.url`
+  // - `new URL('...', import.meta.url)
+  // - `new URL("...", import.meta.url)
+  // Also matches optional options param.
+  const workerRegexpForTransform = /(new\s+Worker\()\s*('.*?'|".*?"|import\.meta\.url|new\s+URL\(('.*?'|".*?"),\s*import\.meta\.url\))\s*(?:,(.+?))?\)/gs;
   const workerEntrypoints = new Map();
   const virtualFiles = new Map();
   let watcher: FSWatcher;
@@ -145,66 +159,81 @@ function omtPlugin(config: OMTConfig): Plugin {
 
     async transform(context) {
       if (context.path && context.path.endsWith(".js")) {
-        const code = context.body;
+        const code = context.body as string;
         let ms: MagicString | undefined;
 
         let hasWorker = false;
-        while (true) {
-          const match = workerRegexp.exec(code);
-          if (!match) {
-            break;
+        console.log("matching ", context.path);
+
+        // Tippex is performing regex matching under the hood, but automatically ignores comments
+        // and string contents so it's more reliable on JS syntax.
+        match(code, workerRegexpForTransform, (...matchArgs: MatchArgs) => {
+          const fullMatch = matchArgs[0];
+          const [
+            constructorString,
+            partBeforeArgs,
+            urlPath,
+            options,
+          ] = matchArgs.slice(1, -2) as string[];
+          const index = matchArgs[matchArgs.length - 2] as number;
+
+          const workerParametersStartIndex = index + constructorString.length;
+          const workerParametersEndIndex = index + fullMatch.length - 1;
+
+          // if urlPath was matched then we're matching a `new Worker(new URL('./worker.js'))` style string
+          // otherwise we're matching a `new Worker('./worker.js')` style usage
+          let workerFile = urlPath ? urlPath : partBeforeArgs;
+          // handle edge case of self defining worker files
+          if (partBeforeArgs === "import.meta.url") {
+            // the worker is the current file!
+            workerFile = context.path;
+          } else {
+            // Cut off surrounding quotes if it was a specified path
+            workerFile = workerFile.slice(1, -1);
+
+            if (!/^\.{1,2}\//.test(workerFile)) {
+              console.debug(
+                `Paths passed to the Worker constructor must be relative to the current file, i.e. start with ./ or ../ (just like dynamic import!). Ignoring "${workerFile}".`
+              );
+              return;
+            }
           }
 
-          const workerURL = match[2];
           const workerRootDir = path.posix.dirname(context.path).slice(1);
 
           const resolvedWorkerPath = `/${path.posix.normalize(
-            path.posix.join(workerRootDir, workerURL)
+            path.posix.join(workerRootDir, workerFile)
           )}`;
 
-          let optionsObject: {
-            type?: "module" | "classic";
-            name?: string;
-            credentials?: string;
-          } = {};
-
-          // Parse the optional options object
-          if (match[3] && match[3].length > 0) {
-            // I scratched my head at this initially, this is due to JSON in JS files not actually being valid JSON
-            // strings due to lack of proper quoting, this is an interesting work around @surma!
-
-            // FIXME: ooooof!
-            optionsObject = new Function(`return ${match[3].slice(1)};`)();
+          const parsedOptions = json5.parse(options);
+          if (!parsedOptions.type || parsedOptions.type !== "module") {
+            return; // nothing to do for non-module workers
           }
 
-          if (optionsObject.type !== "module") {
-            // don't need to bundle non-module workers so exit
-            return;
-          }
+          console.debug(
+            `Found worker: path = "${workerFile}", options = ${JSON.stringify(
+              parsedOptions
+            )}, resolved to ${resolvedWorkerPath}`
+          );
 
           hasWorker = true;
           let workerEntry = {
             code: undefined,
-            url: workerURL,
+            url: workerFile,
             rootDir: workerRootDir,
-            options: optionsObject,
             watchListener: undefined,
             watchedFiles: [],
           };
 
           workerEntrypoints.set(resolvedWorkerPath, workerEntry);
 
-          // also borrowed from OMT plugin, have to rewrite the worker string to the new path
-          const workerParametersStartIndex = match.index + "new Worker(".length;
-          const workerParametersEndIndex =
-            match.index + match[0].length - ")".length;
           ms = new MagicString(code);
           ms.overwrite(
             workerParametersStartIndex,
             workerParametersEndIndex,
-            `'${resolvedWorkerPath}', ${JSON.stringify(optionsObject)}`
+            `'${resolvedWorkerPath}', ${JSON.stringify(parsedOptions)}`
           );
-        }
+        });
 
         // if the file has worker references, we've modified it
         // so we should generate a new sourcemap and add it to the virtuals list

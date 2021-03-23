@@ -1,2 +1,5 @@
-const worker = new Worker("../worker/worker.js", { type: "module", name: "my-worker" });
+const worker = new Worker(new URL("../worker/worker.js", import.meta.url), {
+  type: "module",
+  name: "my-worker",
+});
 worker.postMessage("hello");
