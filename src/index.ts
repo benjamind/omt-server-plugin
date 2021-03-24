@@ -55,13 +55,11 @@ function omtPlugin(config: OMTConfig): Plugin {
       }
       const requestedUrl = context.path;
 
-      // serve sourcemaps from memory
-      if (requestedUrl.endsWith(".map")) {
-        // if requested map is in the virtual files map just return it
-        if (virtualFiles.has(requestedUrl)) {
-          return { body: virtualFiles.get(requestedUrl) };
-        }
+      // if requested file is in the virtual files map just return it
+      if (virtualFiles.has(requestedUrl)) {
+        return { body: virtualFiles.get(requestedUrl) };
       }
+
       // if its not a worker entry point just exit
       if (!workerEntrypoints.has(requestedUrl)) {
         return;
@@ -76,10 +74,6 @@ function omtPlugin(config: OMTConfig): Plugin {
       }
 
       // process the worker file
-      console.log(
-        `omt-worker-plugin: bundling worker from '${worker.url}': ${rootDir} ${worker.rootDir}`
-      );
-
       const legacyBundle = await rollup({
         input: worker.url,
         plugins: [
@@ -127,6 +121,7 @@ function omtPlugin(config: OMTConfig): Plugin {
       worker.watchListener = watchListener;
 
       // generate the worker using AMD
+      console.log(`generating AMD worker bundle for ${requestedUrl}`);
       const { output } = await legacyBundle.generate({
         format: "amd",
         sourcemap: true,
@@ -141,6 +136,18 @@ function omtPlugin(config: OMTConfig): Plugin {
       // add the sourcemap to virtual files list to be served directly later
       virtualFiles.set(`${requestedUrl}.map`, output[0].map);
 
+      // add the other chunks to virtual files set too
+      for (let i = 1; i < output.length; i++) {
+        const chunk = output[i];
+        const chunkFilename = `/${worker.rootDir}/${chunk.fileName}`;
+        console.debug(`\temitting chunk ${chunkFilename}`);
+        if (chunk.type === "chunk") {
+          virtualFiles.set(chunkFilename, chunk.code);
+        } else {
+          virtualFiles.set(chunkFilename, chunk.source);
+        }
+      }
+      console.log("\tdone.");
       // return the worker code
       return { body: worker.code };
     },
@@ -163,7 +170,6 @@ function omtPlugin(config: OMTConfig): Plugin {
         let ms: MagicString | undefined;
 
         let hasWorker = false;
-        console.log("matching ", context.path);
 
         // Tippex is performing regex matching under the hood, but automatically ignores comments
         // and string contents so it's more reliable on JS syntax.
@@ -209,12 +215,6 @@ function omtPlugin(config: OMTConfig): Plugin {
           if (!parsedOptions.type || parsedOptions.type !== "module") {
             return; // nothing to do for non-module workers
           }
-
-          console.debug(
-            `Found worker: path = "${workerFile}", options = ${JSON.stringify(
-              parsedOptions
-            )}, resolved to ${resolvedWorkerPath}`
-          );
 
           hasWorker = true;
           let workerEntry = {
